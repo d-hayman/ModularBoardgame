@@ -1,6 +1,15 @@
 #include <FastLED.h>  // Include FastLED library
 #include <LiquidCrystal_I2C.h>
 
+enum GameState { 
+  INIT, 
+  PLAYERS_SET_COUNT, 
+  PLAYERS_SET_COLORS,
+  SPACES_SET_COUNT, 
+  PLAYER_TURNS 
+  };
+GameState gameState = INIT;
+
 struct Button {
   const int pin;          // Pin number
   int state;              // Current state
@@ -11,12 +20,32 @@ struct Button {
 };
 
 const int debounceDelay = 50; // Debounce time in ms
+const int longPressDelay = 500; // Long Press Debounce time in ms
 
-int players = 1;
+struct Player {
+  int position;
+  CRGB color;
 
-enum GameState { INIT, SETUPPLAYERS, PLAYER_TURNS };
-GameState gameState = INIT;
+  Player() : position(0), color(CRGB::Red) {}
+};
 
+const int minPlayers = 1;
+const int maxPlayers = 2; // TODO: set to 6 once the new board pieces arrive
+int playerCount = 1;
+int currentPlayer = 0;
+
+Player* players;
+
+#define DATA_PIN 4    // Data pin for LED control
+#define COLOR_COUNT 7
+CRGB colorChoices[COLOR_COUNT] = {CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Yellow, CRGB::Purple, CRGB::Orange, CRGB::White};
+int currentColor = 0;
+
+const int minSpaces = 2;
+const int maxSpaces = 4;
+int spaceCount = 2;
+
+CRGB leds[maxPlayers * maxSpaces];
 Button enterButton(2);
 Button minusButton(13);
 Button plusButton(14);
@@ -32,9 +61,13 @@ void setup() {
   lcd.init();       // initialize the LCD
   lcd.clear();      // clear the LCD display
   lcd.backlight();  // Make sure backlight is on
+
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, maxPlayers * maxSpaces);  // Initialize LEDs
+  FastLED.show();
 }
 
-void updateButton(Button &btn, void (*callback)()) {
+
+void updateButton(Button &btn, void (*callback)(), bool allowHold = false) {
   int reading = digitalRead(btn.pin);
 
   if (reading != btn.lastState) {
@@ -42,12 +75,17 @@ void updateButton(Button &btn, void (*callback)()) {
   }
 
   if ((millis() - btn.lastDebounceTime) > debounceDelay) {
-    if (reading != btn.state) {
-      btn.state = reading;
-      if (btn.state == HIGH) {
-        callback();
-      }
+    if (reading == HIGH && btn.state == LOW) { // Initial press
+      callback();
+      btn.lastDebounceTime = millis(); // Reset for long press handling
     }
+
+    if (allowHold && reading == HIGH && (millis() - btn.lastDebounceTime) > longPressDelay) { // Long press repeat
+      callback();
+      btn.lastDebounceTime = millis(); // Reset repeat timing
+    }
+
+    btn.state = reading;
   }
 
   btn.lastState = reading;
@@ -58,14 +96,14 @@ void displayPlayers() {
   lcd.setCursor(1, 0);  //Set cursor to character 2 on line 0
   lcd.print("Enter Players:");
   lcd.setCursor(4, 1);  //Move cursor to character 2 on line 1
-  lcd.print(players);
+  lcd.print(playerCount);
   lcd.setCursor(5, 1);  //Move cursor to character 2 on line 1
   lcd.print(" players");
 }
 
 void incrementPlayers() {
-  if (players < 6)
-    players++;
+  if (playerCount < maxPlayers)
+    playerCount++;
 
   displayPlayers();
   //Serial.print(players);
@@ -73,23 +111,82 @@ void incrementPlayers() {
 }
 
 void decrementPlayers() {
-  if (players > 1)
-    players--;
+  if (playerCount > minPlayers)
+    playerCount--;
 
   displayPlayers();
   //Serial.print(players);
   //Serial.println(" players");
 }
 
+void confirmPlayers() {
+  players = new Player[playerCount];
+  displayColorSelect();
+  gameState = PLAYERS_SET_COLORS;
+}
+
+void displayColorSelect() {
+  players[currentPlayer] = Player();
+  currentColor = 0;
+  leds[currentPlayer] = players[currentPlayer].color;
+  FastLED.show();
+  lcd.clear();
+  lcd.setCursor(1, 0);  //Set cursor to character 2 on line 0
+  lcd.print("Select Color:");
+  lcd.setCursor(4, 1);  //Move cursor to character 2 on line 1
+  lcd.print("Player ");
+  lcd.setCursor(11, 1);  //Move cursor to character 2 on line 1
+  lcd.print(currentPlayer + 1);
+}
+
+void incrementColor() {
+  currentColor = (currentColor + 1) % COLOR_COUNT;
+  players[currentPlayer].color = colorChoices[currentColor];
+  leds[currentPlayer] = players[currentPlayer].color;
+  FastLED.show();
+}
+
+void decrementColor() {
+  currentColor = (currentColor - 1) % COLOR_COUNT;
+  players[currentPlayer].color = colorChoices[currentColor];
+  leds[currentPlayer] = players[currentPlayer].color;
+  FastLED.show();
+}
+
+void confirmColor() {
+  currentPlayer += 1;
+  if(currentPlayer >= playerCount){
+    gameState = SPACES_SET_COUNT;
+  } else {
+    displayColorSelect();
+  }
+}
+
+void displaySpaceCount() {
+  lcd.clear();
+  lcd.setCursor(0, 0);  //Set cursor to character 2 on line 0
+  lcd.print("Enter # Spaces:");
+  lcd.setCursor(4, 1);  //Move cursor to character 2 on line 1
+  lcd.print(playerCount);
+  lcd.setCursor(5, 1);  //Move cursor to character 2 on line 1
+  lcd.print(" spaces");
+}
+
 void loop() {
   switch (gameState) {
   case INIT:
     displayPlayers();
-    gameState = SETUPPLAYERS;
+    gameState = PLAYERS_SET_COUNT;
     break;
-  case SETUPPLAYERS:
-    updateButton(plusButton, incrementPlayers);
-    updateButton(minusButton, decrementPlayers);
+  case PLAYERS_SET_COUNT:
+    updateButton(plusButton, incrementPlayers, true);
+    updateButton(minusButton, decrementPlayers, true);
+    updateButton(enterButton, confirmPlayers, false);
+    break;
+  case PLAYERS_SET_COLORS:
+    updateButton(plusButton, incrementColor, true);
+    updateButton(minusButton, decrementColor, true);
+    updateButton(enterButton, confirmColor, false);
     break;
   case PLAYER_TURNS:
   //player turns
