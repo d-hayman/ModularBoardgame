@@ -156,7 +156,7 @@ void incrementColor() {
 }
 
 void decrementColor() {
-  currentColor = (currentColor - 1) % COLOR_COUNT;
+  currentColor = (currentColor - 1 + COLOR_COUNT) % COLOR_COUNT;
   players[currentPlayer].color = colorChoices[currentColor];
   leds[currentPlayer] = players[currentPlayer].color;
   FastLED.show();
