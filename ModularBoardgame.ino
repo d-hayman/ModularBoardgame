@@ -10,6 +10,7 @@ enum GameState {
   };
 GameState gameState = INIT;
 
+// BUTTON VALUES
 struct Button {
   const int pin;          // Pin number
   int state;              // Current state
@@ -22,6 +23,7 @@ struct Button {
 const int debounceDelay = 50; // Debounce time in ms
 const int longPressDelay = 500; // Long Press Debounce time in ms
 
+// PLAYER VALUES
 struct Player {
   int position;
   CRGB color;
@@ -41,14 +43,17 @@ Player* players;
 CRGB colorChoices[COLOR_COUNT] = {CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Yellow, CRGB::Purple, CRGB::Orange, CRGB::White};
 int currentColor = 0;
 
+// SPACE VALUES
 const int minSpaces = 2;
 const int maxSpaces = 4;
 int spaceCount = 2;
 
-CRGB leds[maxPlayers * maxSpaces];
+// HARDWARE DECLARATIONS
 Button enterButton(2);
 Button minusButton(13);
 Button plusButton(14);
+
+CRGB leds[maxPlayers * maxSpaces];
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);  // initialize the Liquid Crystal Display object with the I2C address 0x27, 16 columns and 2 rows
 
@@ -66,7 +71,6 @@ void setup() {
   FastLED.setBrightness(5);
   FastLED.show();
 }
-
 
 void updateButton(Button &btn, void (*callback)(), bool allowHold = false) {
   int reading = digitalRead(btn.pin);
@@ -92,6 +96,7 @@ void updateButton(Button &btn, void (*callback)(), bool allowHold = false) {
   btn.lastState = reading;
 }
 
+// PLAYER CONFIG
 void displayPlayers() {
   lcd.clear();
   lcd.setCursor(1, 0);  //Set cursor to character 2 on line 0
@@ -126,6 +131,7 @@ void confirmPlayers() {
   gameState = PLAYERS_SET_COLORS;
 }
 
+// PLAYER COLOR CONFIG
 void displayColorSelect() {
   players[currentPlayer] = Player();
   currentColor = 0;
@@ -157,20 +163,40 @@ void decrementColor() {
 void confirmColor() {
   currentPlayer += 1;
   if(currentPlayer >= playerCount){
+    displaySpaceCount();
     gameState = SPACES_SET_COUNT;
   } else {
     displayColorSelect();
   }
 }
 
+// SPACES CONFIG
 void displaySpaceCount() {
   lcd.clear();
   lcd.setCursor(0, 0);  //Set cursor to character 2 on line 0
   lcd.print("Enter # Spaces:");
   lcd.setCursor(4, 1);  //Move cursor to character 2 on line 1
-  lcd.print(playerCount);
+  lcd.print(spaceCount);
   lcd.setCursor(5, 1);  //Move cursor to character 2 on line 1
   lcd.print(" spaces");
+}
+
+void incrementSpaces() {
+  if (spaceCount < maxSpaces)
+    spaceCount++;
+
+  displaySpaceCount();
+}
+
+void decrementSpaces() {
+  if (spaceCount > minSpaces)
+    spaceCount--;
+
+  displaySpaceCount();
+}
+
+void confirmSpaces() {
+  gameState = PLAYER_TURNS;
 }
 
 void loop() {
@@ -188,6 +214,11 @@ void loop() {
     updateButton(plusButton, incrementColor, true);
     updateButton(minusButton, decrementColor, true);
     updateButton(enterButton, confirmColor, false);
+    break;
+  case SPACES_SET_COUNT:
+    updateButton(plusButton, incrementSpaces, true);
+    updateButton(minusButton, decrementSpaces, true);
+    updateButton(enterButton, confirmSpaces, false);
     break;
   case PLAYER_TURNS:
   //player turns
