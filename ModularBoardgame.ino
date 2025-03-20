@@ -45,8 +45,10 @@ int currentColor = 0;
 
 // SPACE VALUES
 const int minSpaces = 2;
-const int maxSpaces = 4;
+const int maxSpaces = 4; // TODO: up to 30
 int spaceCount = 2;
+
+const int diceFaces = 3; // TODO: up to 6
 
 // HARDWARE DECLARATIONS
 Button enterButton(2);
@@ -196,7 +198,58 @@ void decrementSpaces() {
 }
 
 void confirmSpaces() {
+  currentPlayer = 0;
+  displayCurrentPlayer();
   gameState = PLAYER_TURNS;
+}
+
+// GAME LOOP
+void displayCurrentPlayer() {
+  lcd.clear();
+  lcd.setCursor(1, 0);  //Set cursor to character 2 on line 0
+  lcd.print("Press to roll:");
+  lcd.setCursor(4, 1);  //Move cursor to character 2 on line 1
+  lcd.print("Player ");
+  lcd.setCursor(11, 1);  //Move cursor to character 2 on line 1
+  lcd.print(currentPlayer + 1);
+}
+
+int diceRoll(){
+  return (esp_random() % diceFaces) + 1;
+}
+
+void playTurn() {
+  lcd.clear();
+  lcd.setCursor(3, 0);  //Set cursor to character 2 on line 0
+  lcd.print("Rolling");
+  delay(250);
+  lcd.print(".");
+  delay(250);
+  lcd.print(".");
+  delay(250);
+  lcd.print(".");
+  delay(250);
+
+  int roll = diceRoll();
+
+  lcd.clear();
+  lcd.setCursor(3, 0);  //Set cursor to character 2 on line 0
+  lcd.print("You rolled:");
+  lcd.setCursor(8, 1);  //Move cursor to character 2 on line 1
+  lcd.print(roll);
+
+  for(int x = 0; x < roll; x++){
+    delay(500);
+    // get the LED at the position index and player subindex
+    leds[players[currentPlayer].position * maxPlayers + currentPlayer] = CRGB::Black;
+    players[currentPlayer].position = min((players[currentPlayer].position + 1), spaceCount-1);
+    leds[players[currentPlayer].position * maxPlayers + currentPlayer] = players[currentPlayer].color;
+    FastLED.show();
+  }
+
+  delay(500);
+  currentPlayer = (currentPlayer + 1) % playerCount;
+  displayCurrentPlayer();
 }
 
 void loop() {
@@ -221,8 +274,8 @@ void loop() {
     updateButton(enterButton, confirmSpaces, false);
     break;
   case PLAYER_TURNS:
-  //player turns
-  break;
+    updateButton(enterButton, playTurn, false);
+    break;
   }
 
 }
