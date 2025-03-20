@@ -63,6 +63,7 @@ void setup() {
   lcd.backlight();  // Make sure backlight is on
 
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, maxPlayers * maxSpaces);  // Initialize LEDs
+  FastLED.setBrightness(5);
   FastLED.show();
 }
 
