@@ -32,7 +32,7 @@ struct Player {
 };
 
 const int minPlayers = 1;
-const int maxPlayers = 2; // TODO: set to 6 once the new board pieces arrive
+const int maxPlayers = 6; 
 int playerCount = 1;
 int currentPlayer = 0;
 
@@ -45,17 +45,17 @@ int currentColor = 0;
 
 // SPACE VALUES
 const int minSpaces = 2;
-const int maxSpaces = 4; // TODO: up to 30
+const int maxSpaces = 30; 
 int spaceCount = 2;
 
-const int diceFaces = 3; // TODO: up to 6
+const int diceFaces = 6; 
 
 // HARDWARE DECLARATIONS
 Button enterButton(2);
 Button minusButton(13);
 Button plusButton(14);
 
-CRGB leds[maxPlayers * maxSpaces];
+CRGB leds[(1+maxPlayers) * maxSpaces];
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);  // initialize the Liquid Crystal Display object with the I2C address 0x27, 16 columns and 2 rows
 
@@ -137,7 +137,7 @@ void confirmPlayers() {
 void displayColorSelect() {
   players[currentPlayer] = Player();
   currentColor = 0;
-  leds[currentPlayer] = players[currentPlayer].color;
+  leds[1+currentPlayer] = players[currentPlayer].color;
   FastLED.show();
   lcd.clear();
   lcd.setCursor(1, 0);  //Set cursor to character 2 on line 0
@@ -151,14 +151,14 @@ void displayColorSelect() {
 void incrementColor() {
   currentColor = (currentColor + 1) % COLOR_COUNT;
   players[currentPlayer].color = colorChoices[currentColor];
-  leds[currentPlayer] = players[currentPlayer].color;
+  leds[1+currentPlayer] = players[currentPlayer].color;
   FastLED.show();
 }
 
 void decrementColor() {
   currentColor = (currentColor - 1 + COLOR_COUNT) % COLOR_COUNT;
   players[currentPlayer].color = colorChoices[currentColor];
-  leds[currentPlayer] = players[currentPlayer].color;
+  leds[1+currentPlayer] = players[currentPlayer].color;
   FastLED.show();
 }
 
@@ -241,9 +241,9 @@ void playTurn() {
   for(int x = 0; x < roll; x++){
     delay(500);
     // get the LED at the position index and player subindex
-    leds[players[currentPlayer].position * maxPlayers + currentPlayer] = CRGB::Black;
+    leds[players[currentPlayer].position * (1+maxPlayers) + 1+currentPlayer] = CRGB::Black;
     players[currentPlayer].position = min((players[currentPlayer].position + 1), spaceCount-1);
-    leds[players[currentPlayer].position * maxPlayers + currentPlayer] = players[currentPlayer].color;
+    leds[players[currentPlayer].position * (1+maxPlayers) + 1+currentPlayer] = players[currentPlayer].color;
     FastLED.show();
   }
 
