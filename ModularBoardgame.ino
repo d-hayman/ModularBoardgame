@@ -177,7 +177,7 @@ void displaySpaceCount() {
   lcd.clear();
   lcd.setCursor(0, 0);  //Set cursor to character 2 on line 0
   lcd.print("Enter # Spaces:");
-  lcd.setCursor(4, 1);  //Move cursor to character 2 on line 1
+  lcd.setCursor(4-log10(spaceCount), 1);  //Move cursor to character 2 on line 1
   lcd.print(spaceCount);
   lcd.setCursor(5, 1);  //Move cursor to character 2 on line 1
   lcd.print(" spaces");
